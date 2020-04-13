@@ -1,0 +1,59 @@
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: single-kibana-es-service
+  name: single-kibana-es-service
+spec:
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 9200
+      targetPort: 9200
+      nodePort: 30092
+      name: es-port
+    - name: kibana-port
+      protocol: TCP
+      port: 5601
+      targetPort: 5601
+      nodePort: 30056
+  selector:
+    app: single-kibana-es-pod
+
+
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: single-kibana-es-pod
+  labels:
+    app: single-kibana-es-pod
+spec:
+  hostname: elasticsearch
+  containers:
+  - image: docker.elastic.co/elasticsearch/elasticsearch:7.5.2
+    name: es-container
+    imagePullPolicy: IfNotPresent
+    livenessProbe:
+      periodSeconds: 10
+      timeoutSeconds: 5
+      initialDelaySeconds: 30
+      httpGet:
+        path: /_cluster/health
+        port: 9200 
+    ports:
+    - containerPort: 9200
+      name: api-port
+    env:
+     - name: discovery.type
+       value: "single-node"
+  - image: docker.elastic.co/kibana/kibana:7.5.2
+    name: kibana-container
+    imagePullPolicy: IfNotPresent
+    env:
+    - name: ELASTICSEARCH_HOSTS
+      value: "http://elasticsearch:9200"
+    ports:
+    - containerPort: 5601
+      name: kibana-port
